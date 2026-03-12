@@ -1,0 +1,6 @@
+langgraph
+langchain-openai
+langchain-core
+pandas
+matplotlib
+ipykernel
