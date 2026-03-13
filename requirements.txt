@@ -1,4 +1,5 @@
 langgraph
+langchain
 langchain-openai
 langchain-core
 pandas
