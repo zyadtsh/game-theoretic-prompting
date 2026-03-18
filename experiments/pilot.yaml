@@ -1,0 +1,29 @@
+name: pilot
+description: "Quick test: cooperative vs competitive with asymmetric transparency"
+repetitions: 1
+
+defaults:
+  game: prisoners_dilemma
+  num_rounds: 5
+  model:
+    model: meta-llama-3.1-8b-instruct
+    base_url: http://localhost:1234/v1
+    api_key: lm-studio
+    temperature: 0.7
+
+runs:
+  - id: coop_vs_comp_b_sees_a
+    agent_a:
+      prompt: cooperative
+      can_see_opponent: false
+    agent_b:
+      prompt: competitive
+      can_see_opponent: true
+
+  - id: coop_vs_comp_both_blind
+    agent_a:
+      prompt: cooperative
+      can_see_opponent: false
+    agent_b:
+      prompt: competitive
+      can_see_opponent: false

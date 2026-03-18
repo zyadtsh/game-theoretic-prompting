@@ -5,3 +5,4 @@ langchain-core
 pandas
 matplotlib
 ipykernel
+pyyaml

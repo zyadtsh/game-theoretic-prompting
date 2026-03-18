@@ -1,0 +1,21 @@
+name: transparency_sweep
+description: "2 prompt strategies x 4 transparency conditions x 3 repetitions"
+repetitions: 3
+
+defaults:
+  game: prisoners_dilemma
+  num_rounds: 10
+  model:
+    model: meta-llama-3.1-8b-instruct
+    base_url: http://localhost:1234/v1
+    api_key: lm-studio
+    temperature: 0.7
+
+grid:
+  prompt_a: [cooperative, competitive]
+  prompt_b: [cooperative, competitive]
+  transparency:
+    - {a_sees_b: false, b_sees_a: false}
+    - {a_sees_b: true,  b_sees_a: true}
+    - {a_sees_b: true,  b_sees_a: false}
+    - {a_sees_b: false, b_sees_a: true}
