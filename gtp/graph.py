@@ -3,7 +3,7 @@
 build_game_graph() wires controller -> agent_a -> agent_b -> resolver in a loop.
 Agents run sequentially but can't see each other's current-round move.
 """
-import copy
+from dataclasses import replace
 from typing import Annotated, Optional
 from typing_extensions import TypedDict
 
@@ -14,6 +14,7 @@ from gtp.games.base import BaseGame
 from gtp.games import GAME_REGISTRY
 from gtp.agents.tools import make_tools
 from gtp.agents.builder import build_agent_subgraph, make_agent_node
+from gtp.agents.fixed import is_fixed_strategy, make_fixed_node
 
 
 class GameState(TypedDict):
@@ -25,11 +26,20 @@ class GameState(TypedDict):
     game_over: bool
 
 
-def build_game_graph(run_config: GameRunConfig, game: BaseGame | None = None):
+def build_game_graph(
+    run_config: GameRunConfig,
+    game: BaseGame | None = None,
+    seed_a: int | None = None,
+    seed_b: int | None = None,
+):
     """Build the full game graph. Returns (compiled_graph, game).
 
     If `game` is None, one is created from run_config.game.
     Prompt keys from PROMPT_REGISTRY are resolved to full text here.
+
+    `seed_a` / `seed_b` are passed through to fixed-strategy wrappers; only
+    stochastic strategies (see FIXED_STRATEGY_REGISTRY classification) use
+    them. LLM agents ignore seeds — their stochasticity lives in the model.
     """
     if game is None:
         game_cls = GAME_REGISTRY[run_config.game]
@@ -37,25 +47,36 @@ def build_game_graph(run_config: GameRunConfig, game: BaseGame | None = None):
 
     game.reset(run_config.num_rounds)
 
-    # Resolve prompt keys to full text on shallow copies so the original
-    # run_config is not mutated (matters when the same config runs multiple reps).
-    agent_a_cfg = copy.copy(run_config.agent_a)
-    agent_b_cfg = copy.copy(run_config.agent_b)
+    # Copy agent configs so prompt resolution doesn't mutate the original
+    # run_config (matters when the same config runs multiple reps).
+    agent_a_cfg = replace(run_config.agent_a)
+    agent_b_cfg = replace(run_config.agent_b)
+
+    a_is_fixed = is_fixed_strategy(agent_a_cfg.system_prompt)
+    b_is_fixed = is_fixed_strategy(agent_b_cfg.system_prompt)
+
+    # Resolve LLM prompt templates (skip for fixed strategies)
     for agent_cfg in (agent_a_cfg, agent_b_cfg):
-        if agent_cfg.system_prompt in PROMPT_REGISTRY:
+        if not is_fixed_strategy(agent_cfg.system_prompt) and agent_cfg.system_prompt in PROMPT_REGISTRY:
             agent_cfg.system_prompt = format_prompt(
-                agent_cfg.system_prompt, game.name, game.get_moves()
+                agent_cfg.system_prompt, game.name, game.get_moves(),
+                num_rounds=run_config.num_rounds,
             )
 
-    # Build tools and subgraphs
-    tools_a = make_tools(game, "Agent_A", agent_a_cfg, agent_b_cfg)
-    tools_b = make_tools(game, "Agent_B", agent_b_cfg, agent_a_cfg)
+    # Build agent nodes — fixed strategies bypass LLM entirely
+    if a_is_fixed:
+        agent_a_node = make_fixed_node(agent_a_cfg.system_prompt, "Agent_A", game, seed=seed_a)
+    else:
+        tools_a = make_tools(game, "Agent_A", agent_a_cfg, agent_b_cfg)
+        agent_a_graph = build_agent_subgraph(agent_a_cfg, tools_a)
+        agent_a_node = make_agent_node("Agent_A", agent_a_cfg, agent_a_graph, game)
 
-    agent_a_graph = build_agent_subgraph(agent_a_cfg, tools_a)
-    agent_b_graph = build_agent_subgraph(agent_b_cfg, tools_b)
-
-    agent_a_node = make_agent_node("Agent_A", agent_a_cfg, agent_a_graph, game)
-    agent_b_node = make_agent_node("Agent_B", agent_b_cfg, agent_b_graph, game)
+    if b_is_fixed:
+        agent_b_node = make_fixed_node(agent_b_cfg.system_prompt, "Agent_B", game, seed=seed_b)
+    else:
+        tools_b = make_tools(game, "Agent_B", agent_b_cfg, agent_a_cfg)
+        agent_b_graph = build_agent_subgraph(agent_b_cfg, tools_b)
+        agent_b_node = make_agent_node("Agent_B", agent_b_cfg, agent_b_graph, game)
 
     def controller(state: GameState) -> dict:
         if game.is_done():

@@ -6,3 +6,7 @@ pandas
 matplotlib
 ipykernel
 pyyaml
+python-dotenv
+axelrod>=4.13
+numpy
+pytest

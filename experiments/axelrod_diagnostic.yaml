@@ -1,0 +1,50 @@
+name: axelrod_diagnostic
+description: >
+  Stage 0 strategic-competence probe. Pits the `minimal` LLM (no strategic
+  framing) against four classic fixed opponents over 100 rounds. Run this on
+  every new model BEFORE the deterministic/stochastic experiments. Gating
+  criteria:
+    - coop rate of minimal vs always_cooperate_fixed > 70%
+    - defect rate of minimal vs always_defect_fixed > 50% by round 20
+    - reactive behavior vs suspicious_tft and tft (not stuck in a loop)
+  If the model fails, retry with temperature 0.1; if still failing, the
+  model is unsuited for this experiment — document and stop.
+repetitions: 1
+
+defaults:
+  game: prisoners_dilemma
+  num_rounds: 100
+  model:
+    model: minimax/minimax-m2.5:free
+    base_url: https://openrouter.ai/api/v1
+    api_key: $OPENROUTER_API_KEY
+    temperature: 0.0
+    fallback_models:
+      - minimax/minimax-m2.5
+    reasoning:
+      enabled: true
+
+runs:
+  - id: minimal_vs_always_cooperate
+    agent_a:
+      prompt: minimal
+    agent_b:
+      prompt: always_cooperate_fixed
+
+  - id: minimal_vs_always_defect
+    agent_a:
+      prompt: minimal
+    agent_b:
+      prompt: always_defect_fixed
+
+  - id: minimal_vs_suspicious_tft
+    agent_a:
+      prompt: minimal
+    agent_b:
+      prompt: suspicious_tit_for_tat_fixed
+
+  - id: minimal_vs_tft
+    agent_a:
+      prompt: minimal
+    agent_b:
+      prompt: tft_fixed

@@ -1,0 +1,66 @@
+name: fixed_strategies
+description: "Fixed deterministic agents vs LLM agents across games"
+repetitions: 3
+
+defaults:
+  num_rounds: 10
+  model:
+    model: meta-llama-3.1-8b-instruct
+    base_url: http://localhost:1234/v1
+    api_key: lm-studio
+    temperature: 0.7
+
+runs:
+  # Fixed vs fixed (no LLM needed)
+  - id: tft_vs_always_defect
+    game: prisoners_dilemma
+    agent_a:
+      prompt: tit_for_tat_fixed
+    agent_b:
+      prompt: always_defect_fixed
+
+  - id: always_cooperate_vs_suspicious_tft
+    game: prisoners_dilemma
+    agent_a:
+      prompt: always_cooperate_fixed
+    agent_b:
+      prompt: suspicious_tit_for_tat_fixed
+
+  # Fixed vs LLM
+  - id: tft_fixed_vs_cooperative_llm
+    game: prisoners_dilemma
+    agent_a:
+      prompt: tit_for_tat_fixed
+    agent_b:
+      prompt: cooperative
+
+  - id: always_defect_vs_competitive_llm
+    game: prisoners_dilemma
+    agent_a:
+      prompt: always_defect_fixed
+    agent_b:
+      prompt: competitive
+
+  # Minimal prompt LLM (no strategic framing)
+  - id: minimal_vs_cooperative
+    game: prisoners_dilemma
+    agent_a:
+      prompt: minimal
+    agent_b:
+      prompt: cooperative
+
+  # Fixed strategies on Chicken
+  - id: tft_vs_always_cooperate_chicken
+    game: chicken
+    agent_a:
+      prompt: tit_for_tat_fixed
+    agent_b:
+      prompt: always_cooperate_fixed
+
+  # Fixed strategies on Stag Hunt
+  - id: tft_vs_always_defect_stag
+    game: stag_hunt
+    agent_a:
+      prompt: tit_for_tat_fixed
+    agent_b:
+      prompt: always_defect_fixed

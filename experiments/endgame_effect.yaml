@@ -1,0 +1,67 @@
+name: endgame_effect
+description: >
+  20-round Prisoner's Dilemma testing whether explicit knowledge of game length
+  in the system prompt affects last-round behavior (endgame effect).
+  Endgame-aware minimal vs fixed strategies, and endgame-aware LLM analogs vs minimal.
+repetitions: 1
+
+defaults:
+  game: prisoners_dilemma
+  num_rounds: 20
+  model:
+    model: openrouter/elephant-alpha
+    base_url: https://openrouter.ai/api/v1
+    api_key: $OPENROUTER_API_KEY
+    temperature: 0.7
+
+runs:
+  # --- Endgame-aware minimal vs fixed strategies ---
+  - id: ac_fixed_vs_minimal_endgame
+    agent_a:
+      prompt: always_cooperate_fixed
+    agent_b:
+      prompt: minimal_endgame
+
+  - id: ad_fixed_vs_minimal_endgame
+    agent_a:
+      prompt: always_defect_fixed
+    agent_b:
+      prompt: minimal_endgame
+
+  - id: tft_fixed_vs_minimal_endgame
+    agent_a:
+      prompt: tit_for_tat_fixed
+    agent_b:
+      prompt: minimal_endgame
+
+  - id: stft_fixed_vs_minimal_endgame
+    agent_a:
+      prompt: suspicious_tit_for_tat_fixed
+    agent_b:
+      prompt: minimal_endgame
+
+  # --- Endgame-aware LLM analogs vs endgame-aware minimal ---
+  - id: ac_llm_endgame_vs_minimal_endgame
+    agent_a:
+      prompt: always_cooperate_llm_endgame
+    agent_b:
+      prompt: minimal_endgame
+
+  - id: ad_llm_endgame_vs_minimal_endgame
+    agent_a:
+      prompt: always_defect_llm_endgame
+    agent_b:
+      prompt: minimal_endgame
+
+  - id: stft_llm_endgame_vs_minimal_endgame
+    agent_a:
+      prompt: suspicious_tit_for_tat_llm_endgame
+    agent_b:
+      prompt: minimal_endgame
+
+  # --- Endgame-aware minimal vs itself ---
+  - id: minimal_endgame_vs_minimal_endgame
+    agent_a:
+      prompt: minimal_endgame
+    agent_b:
+      prompt: minimal_endgame

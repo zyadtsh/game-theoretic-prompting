@@ -1,0 +1,47 @@
+name: axelrod_deterministic
+description: >
+  Deterministic half of the Axelrod-vs-minimal experiment.
+  14 agents (7 deterministic Axelrod first-tournament strategies as fixed
+  wrappers + their 7 LLM-prompted twins) each play `minimal` once over 100
+  rounds at temperature 0. Single rep is sufficient because there's no
+  stochastic source on either side (fixed wrappers are deterministic; LLM
+  agents run at T=0).
+  Model: minimax/minimax-m2.5:free. Change this single line to rerun on
+  another model.
+repetitions: 1
+
+defaults:
+  game: prisoners_dilemma
+  num_rounds: 100
+  model:
+    model: minimax/minimax-m2.5:free
+    base_url: https://openrouter.ai/api/v1
+    api_key: $OPENROUTER_API_KEY
+    temperature: 0.0
+    fallback_models:
+      - minimax/minimax-m2.5
+    reasoning:
+      enabled: true
+
+grid:
+  prompt_a:
+    # 7 deterministic fixed (axelrod-backed)
+    - tft_fixed
+    - tideman_chieruzzi_fixed
+    - nydegger_fixed
+    - shubik_fixed
+    - grudger_fixed
+    - davis_fixed
+    - downing_fixed
+    # 7 deterministic LLM twins
+    - tft_llm
+    - tideman_chieruzzi_llm
+    - nydegger_llm
+    - shubik_llm
+    - grudger_llm
+    - davis_llm
+    - downing_llm
+  prompt_b:
+    - minimal
+  transparency:
+    - {a_sees_b: false, b_sees_a: false}

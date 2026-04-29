@@ -1,10 +1,12 @@
 """Experiment runner that iterates over a config grid and executes game runs.
 
 Supports multiple conditions x repetitions, crash-resilient resumption
-(skips completed run_ids), and per-run error isolation.
+(skips completed run_ids), and per-run error isolation. Transient API
+errors (502, rate limits) are retried at the LLM call level in builder.py.
 """
 from __future__ import annotations
 
+import hashlib
 from dataclasses import asdict
 
 from gtp.config import ExperimentConfig, GameRunConfig
@@ -13,12 +15,23 @@ from gtp.graph import build_game_graph
 from gtp.results import ResultStore
 
 
+def _derive_seed(run_id: str, agent_name: str) -> int:
+    """Stable 32-bit seed from (run_id, agent_name). Deterministic across runs."""
+    h = hashlib.sha256(f"{run_id}|{agent_name}".encode()).digest()
+    return int.from_bytes(h[:4], "big")
+
+
 class ExperimentRunner:
     """Runs all configurations x repetitions, saves results, supports resumption."""
 
-    def __init__(self, config: ExperimentConfig, output_dir: str = "results"):
+    def __init__(
+        self,
+        config: ExperimentConfig,
+        output_dir: str = "results",
+        resume_path: str | None = None,
+    ):
         self.config = config
-        self.store = ResultStore(output_dir, config.name)
+        self.store = ResultStore(output_dir, config.name, resume_path=resume_path)
 
     def run(self, config_path: str | None = None) -> str:
         """Run all experiment configurations. Returns path to results directory."""
@@ -73,7 +86,12 @@ class ExperimentRunner:
         prompt_a_key = run_config.agent_a.system_prompt
         prompt_b_key = run_config.agent_b.system_prompt
 
-        graph, game = build_game_graph(run_config, game)
+        graph, game = build_game_graph(
+            run_config,
+            game,
+            seed_a=_derive_seed(run_id, "Agent_A"),
+            seed_b=_derive_seed(run_id, "Agent_B"),
+        )
 
         result = graph.invoke(
             {
@@ -100,7 +118,8 @@ class ExperimentRunner:
             "history": game.history,
             "scores": game.scores,
             "reasoning_log": game.reasoning_log,
-            "cooperation_rates": {
+            "first_move_name": first_move,
+            "first_move_rates": {
                 "Agent_A": (
                     sum(1 for r in game.history if r["move_a"] == first_move)
                     / len(game.history)

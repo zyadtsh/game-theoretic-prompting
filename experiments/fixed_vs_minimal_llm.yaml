@@ -1,0 +1,31 @@
+name: fixed_vs_minimal_llm
+description: "3 fixed strategies vs minimal-info LLM agent, 100 rounds, prisoners dilemma"
+repetitions: 1
+
+defaults:
+  game: prisoners_dilemma
+  num_rounds: 100
+  model:
+    model: openrouter/elephant-alpha
+    base_url: https://openrouter.ai/api/v1
+    api_key: $OPENROUTER_API_KEY
+    temperature: 0.7
+
+runs:
+  - id: always_cooperate_vs_minimal
+    agent_a:
+      prompt: always_cooperate_fixed
+    agent_b:
+      prompt: minimal
+
+  - id: always_defect_vs_minimal
+    agent_a:
+      prompt: always_defect_fixed
+    agent_b:
+      prompt: minimal
+
+  - id: suspicious_tft_vs_minimal
+    agent_a:
+      prompt: suspicious_tit_for_tat_fixed
+    agent_b:
+      prompt: minimal

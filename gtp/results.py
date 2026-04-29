@@ -17,9 +17,24 @@ import pandas as pd
 class ResultStore:
     """Stores experiment results as JSONL summaries + per-run JSON files."""
 
-    def __init__(self, base_dir: str, experiment_name: str):
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.path = os.path.join(base_dir, f"{experiment_name}_{timestamp}")
+    def __init__(
+        self,
+        base_dir: str,
+        experiment_name: str,
+        resume_path: str | None = None,
+    ):
+        if resume_path:
+            # Resume into an existing results directory. The runner's
+            # has_result() check then skips runs whose JSON already exists,
+            # so only previously failed/missing runs get re-executed.
+            if not os.path.isdir(resume_path):
+                raise FileNotFoundError(
+                    f"--resume path does not exist: {resume_path}"
+                )
+            self.path = resume_path
+        else:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            self.path = os.path.join(base_dir, f"{experiment_name}_{timestamp}")
         self._runs_dir = os.path.join(self.path, "runs")
         os.makedirs(self._runs_dir, exist_ok=True)
 
@@ -37,8 +52,9 @@ class ResultStore:
             "transparency_b": result["config"]["agent_b"]["can_see_opponent_prompt"],
             "score_a": result["scores"]["Agent_A"],
             "score_b": result["scores"]["Agent_B"],
-            "coop_rate_a": result["cooperation_rates"]["Agent_A"],
-            "coop_rate_b": result["cooperation_rates"]["Agent_B"],
+            "first_move_name": result.get("first_move_name", ""),
+            "first_move_rate_a": result["first_move_rates"]["Agent_A"],
+            "first_move_rate_b": result["first_move_rates"]["Agent_B"],
             "num_rounds": len(result["history"]),
             "winner": (
                 "Agent_A"
@@ -50,7 +66,23 @@ class ResultStore:
                 )
             ),
         }
-        with open(os.path.join(self.path, "results.jsonl"), "a") as f:
+        # Resume-safe append: when re-running an errored run via --resume,
+        # drop any pre-existing summary line for the same run_id before
+        # appending. The per-run JSON below is overwritten atomically, but
+        # the JSONL would otherwise accumulate duplicates that confuse
+        # downstream group-bys.
+        jsonl_path = os.path.join(self.path, "results.jsonl")
+        if os.path.exists(jsonl_path):
+            with open(jsonl_path) as f:
+                original = f.readlines()
+            kept = [
+                line for line in original
+                if json.loads(line).get("run_id") != run_id
+            ]
+            if len(kept) != len(original):
+                with open(jsonl_path, "w") as f:
+                    f.writelines(kept)
+        with open(jsonl_path, "a") as f:
             f.write(json.dumps(summary) + "\n")
 
         with open(os.path.join(self._runs_dir, f"{run_id}.json"), "w") as f:

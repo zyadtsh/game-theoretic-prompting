@@ -1,0 +1,46 @@
+name: axelrod_stochastic
+description: >
+  Stochastic half of the Axelrod-vs-minimal experiment.
+  14 agents (7 stochastic Axelrod first-tournament strategies as fixed
+  wrappers + their 7 LLM-prompted twins) each play `minimal` 5 times over
+  100 rounds at temperature 0. 5 reps average over RNG noise in the fixed
+  wrappers (seeded per-run) and minor T=0 LLM non-determinism.
+  Model: minimax/minimax-m2.5:free. Change this single line to rerun on
+  another model.
+repetitions: 5
+
+defaults:
+  game: prisoners_dilemma
+  num_rounds: 100
+  model:
+    model: minimax/minimax-m2.5:free
+    base_url: https://openrouter.ai/api/v1
+    api_key: $OPENROUTER_API_KEY
+    temperature: 0.0
+    fallback_models:
+      - minimax/minimax-m2.5
+    reasoning:
+      enabled: true
+
+grid:
+  prompt_a:
+    # 7 stochastic fixed (axelrod-backed)
+    - random_fixed
+    - grofman_fixed
+    - joss_fixed
+    - feld_fixed
+    - tullock_fixed
+    - graaskamp_fixed
+    - stein_rapoport_fixed
+    # 7 stochastic LLM twins
+    - random_llm
+    - grofman_llm
+    - joss_llm
+    - feld_llm
+    - tullock_llm
+    - graaskamp_llm
+    - stein_rapoport_llm
+  prompt_b:
+    - minimal
+  transparency:
+    - {a_sees_b: false, b_sees_a: false}
